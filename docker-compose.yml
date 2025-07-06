@@ -1,0 +1,67 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: synapse-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./postgres/init-entrypoint.sh:/docker-entrypoint-initdb.d/init-entrypoint.sh:ro
+      - ./postgres/init.sql.template:/docker-entrypoint-initdb.d/init.sql.template:ro
+      - ./postgres/data:/var/lib/postgresql/data
+    networks:
+      - element-net
+
+  synapse:
+    image: synapse-custom:1.0.0
+    container_name: synapse
+    restart: always
+    volumes:
+      - ./synapse/data/.signing.key:/data/.signing.key:ro
+      - ./synapse/data/.log.config:/data/.log.config:ro
+      - ./synapse/homeserver.yaml.template:/data/homeserver.yaml.template:ro
+      - ./synapse/scripts/entrypoint.sh:/entrypoint.sh:ro
+    entrypoint: ["/entrypoint.sh"]
+    depends_on:
+      - postgres
+    environment:
+      - SYNAPSE_SERVER_NAME=
+      - SYNAPSE_REPORT_STATS=no
+      - REGISTRATION_SHARED_SECRET=${REGISTRATION_SHARED_SECRET}
+      - MACAROON_SECRET_KEY=${MACAROON_SECRET_KEY}
+      - FORM_SECRET=${FORM_SECRET}
+      - LDAP_BIND_PASSWORD=${LDAP_BIND_PASSWORD}
+    networks:
+      - element-net
+
+  element:
+    image: vectorim/element-web:latest
+    container_name: element
+    restart: always
+    volumes:
+      - ./element-web/config.json:/app/config.json
+    networks:
+      - element-net
+
+  nginx:
+    image: nginx:stable
+    container_name: nginx-chat
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - synapse
+      - element
+    networks:
+      - element-net
+
+networks:
+  element-net:
+    driver: bridge

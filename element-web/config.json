@@ -1,0 +1,16 @@
+{
+  "default_server_config": {
+    "m.homeserver": {
+      "base_url": "https://your-domain-url",
+      "server_name": "your-domain-url"
+    }
+  },
+  "disable_custom_urls": true,
+  "disable_guests": true,
+  "brand": "your-brand Chat",
+  "default_theme": "light",
+  "roomDirectory": {
+    "servers": ["your-domain-url"]
+  }
+}
+

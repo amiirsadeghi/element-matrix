@@ -1,0 +1,48 @@
+server_name: "your-domain-url"
+public_baseurl: "https://your-domain-url/"
+pid_file: /data/homeserver.pid
+log_config: /data/your-domain-url.log.config
+media_store_path: /data/media_store
+signing_key_path: /data/your-domain-url.signing.key
+report_stats: false
+
+listeners:
+  - port: 8008
+    tls: false
+    type: http
+    x_forwarded: true
+    resources:
+      - names: [client]
+        compress: false
+
+database:
+  name: psycopg2
+  args:
+    user: "${POSTGRES_USER}"
+    password: "${POSTGRES_PASSWORD}"
+    host: postgres
+    port: 5432
+    database: synapse
+    cp_min: 5
+    cp_max: 10
+
+registration_shared_secret: "${REGISTRATION_SHARED_SECRET}"
+macaroon_secret_key: "${MACAROON_SECRET_KEY}"
+form_secret: "${FORM_SECRET}"
+
+password_providers:
+  - module: ldap_auth_provider.LdapAuthProvider
+    config:
+      enabled: true
+      uri: "ldap://your-ldap-server"
+      start_tls: false
+      base: "your-base-ou"
+      bind_dn: "your-dn-user"
+      bind_password: "${LDAP_BIND_PASSWORD}"
+      filter: "(objectClass=person)"
+      attributes:
+        uid: "sAMAccountName"
+        mail: "mail"
+        name: "displayName"
+      tls_require_cert: true
+      fallback: true
