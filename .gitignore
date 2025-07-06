@@ -1,0 +1,4 @@
+.env
+data/synapse/
+data/postgres/
+*.log
