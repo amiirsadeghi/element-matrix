@@ -1,161 +1,137 @@
-# Self‑Hosted Matrix Synapse + Element Stack 🚀
+# Element + Synapse (Matrix) On-Premise Setup
 
-This repository hosts a fully containerized Matrix chat stack using **Synapse** (backend) with a **PostgreSQL** database and **Element** (frontend). It’s production-ready, secure, and optimized for performance.
-
----
-
-## 📁 Project Structure
-
-```
-.
-├── docker-compose.yml
-├── homeserver.template.yaml
-├── .env.example
-├── scripts/               # optional helper scripts (e.g., setup, maintenance)
-└── README.md
-```
+A self-hosted Matrix stack with a custom-built Synapse image and Element web client using Docker Compose. This project is designed for production-ready deployments with PostgreSQL and customizable configuration.
 
 ---
 
-## 🔒 Security & Configuration
+## 🧩 Project Structure
 
-- All sensitive data (e.g. secrets, domains, DB credentials) are in **`.env`**.
-- `.env` is **not committed**—tracked via `.gitignore`.
-- `homeserver.yaml` is generated at runtime inside the Synapse container using:
-  ```bash
-  docker run -it --rm \
-    -v "$(pwd)/data/synapse:/data" \
-    -e SYNAPSE_SERVER_NAME=your.domain.com \
-    -e SYNAPSE_REPORT_STATS=yes \
-    matrixdotorg/synapse:latest generate
-  ```
-- The template is processed with:
-  ```bash
-  envsubst < /data/homeserver.yaml.template > /data/homeserver.yaml
-  ```
-- Finally, Synapse is started using:
-  ```bash
-  exec python3 -m synapse.app.homeserver \
-    --config-path /data/homeserver.yaml
-  ```
+This repository provides a fully dockerized setup for deploying a Matrix homeserver (`Synapse`) along with the official Element client. Key features include:
+
+- Custom Docker image for Synapse
+- Dynamic generation of `homeserver.yaml` via environment variables
+- Secure reverse proxy with NGINX and SSL support
+- Production-ready PostgreSQL integration
+- Optional customization for domain, federation, registration, etc.
 
 ---
 
-## 🧩 Why PostgreSQL?
-
-- Replaces SQLite for faster and more stable production usage.
-- You’ve **compiled the PostgreSQL schema**, ensuring compatibility so Synapse can read and write correctly.
-
----
-
-## 🏗 Deployment Steps
-
-1. **Clone the repo**
-   ```bash
-   git clone https://github.com/yourname/element-matrix.git
-   cd element-matrix
-   ```
-
-2. **Set up environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env to set domain, DB credentials, etc.
-   ```
-
-3. **Launch the stack**
-   ```bash
-   docker-compose up -d
-   ```
-
-4. **Generate `homeserver.yaml` (first run)**
-   ```bash
-   docker-compose exec synapse \
-     /bin/sh -c 'matrixdotorg/synapse:latest generate && \
-     envsubst < /data/homeserver.yaml.template > /data/homeserver.yaml'
-   ```
-
-5. **Register the admin user**
-   ```bash
-   docker-compose exec synapse \
-     register_new_matrix_user -c /data/homeserver.yaml http://localhost:8008
-   ```
-
-6. **Access Element**
-   - Visit `https://your.domain.com` and log in using your Matrix ID.
-
----
-
-## 🔧 Files to Commit & Ignore
-
-✅ **Include in Git:**
-- `docker-compose.yml`
-- `homeserver.template.yaml`
-- `scripts/` (if any)
-- `.env.example`
-
-❌ **Ignore via `.gitignore`:**
-```
-.env
-data/synapse/
-data/postgres/
-*.log
-```
-
----
-
-## 💬 Why Matrix + Element for Enterprise Chat?
-
-- **Open-source & self‑hosted** – full data control, no vendor lock-in.
-- **End-to-End Encryption** (E2EE) out-of-the-box.
-- **Federated architecture** – decentralization as a feature.
-- **Enterprise-friendly** – supports LDAP, SSO, bridges to Slack, Telegram, etc.
-- **Rich UX** – channels, threads, threads, voice/video calls (via Jitsi or LiveKit).
-- **Scalable** – Synapse with PostgreSQL handles load efficiently.
-
----
-
-## 🛠 Step‑by‑Step Implementation Overview
-
-1. **Design stack** – Docker Compose with Synapse, Postgres, and Element.
-2. **Implement `.env`** – centralize all sensitive configuration.
-3. **Template homeserver YAML** – use `*.template.yaml` with `envsubst`.
-4. **Generate on-the-fly** – startup script builds `homeserver.yaml` in container.
-5. **Integrate PostgreSQL** – compiled schema, set `database:` block in template.
-6. **Launch & bootstrap** – bring up services, then create admin.
-7. **Serve Element** – connect Synapse backend via `docker-compose.yml`.
-8. **(Optional) Add HTTPS** – reverse proxy like nginx + TLS certs.
-9. **Use production features** – bridges, LDAP, SSO, monitoring, scaling.
-
----
-
-## ✅ Quick Start
+## 📁 Directory Overview
 
 ```bash
-git clone ...
-cd element-matrix
+element-matrix/
+├── element/               # Element web client container setup
+├── nginx/                 # NGINX reverse proxy with SSL certs
+│   └── ssl/               # Place your `fullchain.pem` and `private.key` here
+├── synapse/               # Synapse homeserver setup
+│   ├── homeserver.yaml.template  # Templated config file
+│   ├── Dockerfile         # Custom Dockerfile for Synapse
+│   └── entrypoint.sh      # Entrypoint script that builds the config dynamically
+├── .env                   # Environment variables (see below)
+├── docker-compose.yml     # Docker Compose setup
+└── README.md              # This file
+🚀 Getting Started
+1. Clone the repository
 
-cp .env.example .env
-# customize your variables here
+git clone https://github.com/amiirsadeghi/element-matrix.git
+cd element-matrix
+. Set up environment variables
+
+Create a .env file in the root directory with values matching your setup:
+
+POSTGRES_DB=synapse
+POSTGRES_USER=synapse
+POSTGRES_PASSWORD=your_secure_password
+SYNAPSE_SERVER_NAME=your.domain.com
+REPORT_STATS=yes
+
+You can customize more options depending on your homeserver.yaml.template.
+3. Place SSL Certificates
+
+Put your SSL certificates into nginx/ssl/ directory:
+
+    nginx/ssl/fullchain.pem
+
+    nginx/ssl/private.key
+
+🐳 Custom Synapse Docker Image
+
+A custom Docker image is built using a templated homeserver.yaml. The config is generated on container start using envsubst.
+🔧 entrypoint.sh
+
+#!/bin/bash
+set -e
+
+envsubst < /data/homeserver.yaml.template > /data/homeserver.yaml
+
+exec python3 -m synapse.app.homeserver \
+  --config-path /data/homeserver.yaml
+
+This allows configuration to be adjusted dynamically through environment variables.
+🧱 Build the Image
+
+cd synapse/
+docker build -t synapse-custom:1.0.0 .
+
+🐘 Database: PostgreSQL
+
+This setup uses PostgreSQL instead of SQLite, making it more suitable for production use.
+
+    The database container is named postgres
+
+    Database name, user, and password are controlled via .env
+
+    Synapse connects using these environment values via the template config
+
+📦 Docker Compose Usage
+
+Once everything is set up:
 
 docker-compose up -d
 
-# generate config and template
-docker-compose exec synapse sh -c '
-  matrixdotorg/synapse:latest generate && \
-  envsubst < /data/homeserver.yaml.template > /data/homeserver.yaml
-'
+This brings up:
 
-# register admin
-docker-compose exec synapse register_new_matrix_user \
-  -c /data/homeserver.yaml http://localhost:8008
-```
+    Synapse (using synapse-custom:1.0.0)
 
----
+    Element Web
 
-## 🛡 License
+    NGINX reverse proxy
 
-MIT License – feel free to adapt.
+    PostgreSQL
 
----
+📄 Configuration Template
 
-This setup gives you a secure, high‑performance, self‑hosted chat system using Matrix + Element, ideal for internal corporate communication.
+You can edit synapse/homeserver.yaml.template to customize federation, registration, email settings, TURN server, etc. Any ${VAR} will be replaced using environment variables during container startup.
+🌐 Access
+
+    Element Web: https://your.domain.com
+
+    Matrix Homeserver: https://your.domain.com (via federation or client config)
+
+🛠 Future Improvements
+
+    Add support for Jitsi integration
+
+    LDAP authentication (optional)
+
+    Registration token control
+
+📖 References
+
+    Matrix Synapse
+
+    Element Web
+
+    PostgreSQL
+
+    Docker
+
+🔒 Security Notice
+
+Make sure to:
+
+    Use strong PostgreSQL credentials
+
+    Keep your SSL certs updated
+
+    Restrict registration in production (unless you trust open signups)
