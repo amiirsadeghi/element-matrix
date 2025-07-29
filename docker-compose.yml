@@ -16,7 +16,7 @@ services:
       - element-net
 
   synapse:
-    image: synapse-custom:1.0.0
+    image: synapse-custom
     container_name: synapse
     restart: always
     volumes:
