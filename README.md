@@ -77,7 +77,23 @@ nginx/ssl/private.key
 
 You can use Let's Encrypt or your custom CA.
 
-### ✅ 4. PostgreSQL Configuration
+### ✅ 4. Build the Synapse Image
+
+Before running the stack, you need to build the custom Synapse image which includes the `gettext` package for dynamic config generation:
+
+```bash
+docker build -t synapse-custom ./synapse
+```
+
+Make sure your `docker-compose.yml` refers to this image:
+
+```yaml
+  synapse:
+    image: synapse-custom
+    ...
+```
+
+### ✅ 5. PostgreSQL Configuration
 
 We don't hardcode credentials in SQL files. Instead, we use `init.sql.template` (not committed to Git, it gets rendered at runtime).
 
@@ -90,7 +106,7 @@ exec docker-entrypoint.sh "$@"
 
 This keeps credentials safe and configs dynamic.
 
-### ✅ 5. Synapse Configuration
+### ✅ 6. Synapse Configuration
 
 Similarly, `homeserver.yaml.template` is used instead of a static file. This approach ensures your Synapse config stays flexible and reusable.
 
@@ -101,15 +117,9 @@ envsubst < /data/homeserver.yaml.template > /data/homeserver.yaml
 exec python3 -m synapse.app.homeserver --config-path /data/homeserver.yaml
 ```
 
-This is built into a custom Docker image using this `Dockerfile`:
+This is part of the image you build in Step 4.
 
-```Dockerfile
-FROM matrixdotorg/synapse:latest
-RUN apt-get update && apt-get install -y gettext \
-    && rm -rf /var/lib/apt/lists/*
-```
-
-### ✅ 6. Element Configuration
+### ✅ 7. Element Configuration
 
 Located at `element-web/config.json`, with example:
 
@@ -133,7 +143,7 @@ Located at `element-web/config.json`, with example:
 
 This file is mounted into the Element container and served statically by Nginx.
 
-### ✅ 7. Nginx Reverse Proxy
+### ✅ 8. Nginx Reverse Proxy
 
 Handles SSL termination and reverse proxying for both Synapse and Element.
 
@@ -143,13 +153,15 @@ Ensure ports **80** and **443** are exposed, and your domain points to the host 
 
 ## 🚀 Run the Stack
 
+Once your `.env` is ready, SSL certs are placed, and Synapse image is built:
+
 ```bash
 docker compose up -d
 ```
 
 This will:
 
-* Build Synapse image (with gettext)
+* Use the prebuilt Synapse image
 * Init PostgreSQL with dynamic script
 * Generate Synapse config
 * Serve Element UI
